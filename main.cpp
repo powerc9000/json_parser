@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 enum hash_entry_datatype {
   HASH_ENTRY_INVALID,
   HASH_ENTRY_INT,
@@ -101,9 +102,10 @@ char *SubString(char* String, int Start, int End){
   Result[End-Start] = 0;
   return Result;
 }
-AST_node JsonToAST(char * JsonString){
-  AST_node Root = {0};
-  Root.Type = HASH_ENTRY_DICTIONARY;
+AST_node *JsonToAST(char * JsonString, char *RootKey = 0){
+  AST_node *Root = (AST_node *)malloc(sizeof(AST_node));
+  memset(Root, 0 , sizeof(AST_node));
+  Root->Type = HASH_ENTRY_DICTIONARY;
   bool FindObject = true;
   bool FindKey = false;
   bool FindValue = false;
@@ -112,7 +114,7 @@ AST_node JsonToAST(char * JsonString){
   int ValueStartIndex = -1;
   int ValueEndIndex = -1;
   AST_node *CurrentNode = {0};
-  char *Key;
+  char *Key = 0;
   char *Current = JsonString;
   while(*Current){
     //putchar((int)*Current);
@@ -138,10 +140,10 @@ AST_node JsonToAST(char * JsonString){
           Key = SubString(JsonString, KeyBeginIndex, KeyEndIndex);
           KeyBeginIndex = -1;
           KeyEndIndex   = -1;
-
-          Root.NumChildren++;
-          Root.Children = (AST_node *)realloc(Root.Children, sizeof(AST_node)* (Root.NumChildren));
-          CurrentNode = Root.Children + (Root.NumChildren - 1);
+          Root->Key = RootKey;
+          Root->NumChildren++;
+          Root->Children = (AST_node *)realloc(Root->Children, sizeof(AST_node)* (Root->NumChildren));
+          CurrentNode = Root->Children + (Root->NumChildren - 1);
 
           CurrentNode->Key = Key;
           CurrentNode->NumChildren = 0;
@@ -223,16 +225,10 @@ AST_node JsonToAST(char * JsonString){
         }
         ValueEndIndex = (Current - JsonString) + 1;
         char *Dictionary = SubString(JsonString, ValueStartIndex, ValueEndIndex);
-        AST_node Child = JsonToAST(Dictionary);
+        AST_node *DictionaryValues = JsonToAST(Dictionary);
         CurrentNode->Type = HASH_ENTRY_DICTIONARY;
-        CurrentNode->NumChildren++;
-        CurrentNode->Children = (AST_node *)realloc(CurrentNode->Children, sizeof(AST_node)*CurrentNode->NumChildren);
-        AST_node *ChildSlot = CurrentNode->Children + (CurrentNode->NumChildren - 1);
-        ChildSlot->Key = Child.Key;
-        ChildSlot->Value = Child.Value;
-        ChildSlot->Children = Child.Children;
-        ChildSlot->Type = Child.Type;
-        ChildSlot->NumChildren = Child.NumChildren;
+        CurrentNode->NumChildren = DictionaryValues->NumChildren;
+        CurrentNode->Children = DictionaryValues->Children;
       }
 
       ValueStartIndex = -1;
@@ -270,7 +266,7 @@ hash_table ParseJson(char *JsonString){
   //             /\               \
   // This will only work for JSON that looks like this {'key':'value'} not things that start will arrays [{'okay':'yeh'}, 1, 2, 3]
   // As to why I didnt use a multi-line comment here. I couldn't tell you!
- AST_node AST = JsonToAST(JsonString);
+	AST_node *AST = JsonToAST(JsonString);
   return Result;
 }
 
